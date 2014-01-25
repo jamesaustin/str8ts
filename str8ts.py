@@ -91,7 +91,19 @@ class Cell(object):
         parts = [ ]
         for x in ALL:
             if x in self.digits:
-                parts.append(x)
+                if self.is_known():
+                    parts.append(x)
+                else:
+                    sc_row = x in self.sure_candidates_by_row
+                    sc_col = x in self.sure_candidates_by_col
+                    if sc_row and sc_col:
+                        parts.append('\033[32m%s\033[30m' % x)
+                    elif sc_row:
+                        parts.append('\033[33m%s\033[30m' % x)
+                    elif sc_col:
+                        parts.append('\033[36m%s\033[30m' % x)
+                    else:
+                        parts.append(x)
             elif x in self.removed:
                 parts.append('\033[31m%s\033[30m' % x)
             else:
@@ -1864,7 +1876,19 @@ if __name__ == "__main__":
 
             All contributions, improvements and optimisations are welcomed.
             '''),
-        epilog='|<-- This application is best run in a terminal with at least 93 columns. ----------------->|')
+        epilog=dedent('''\
+            Coloured syntax highlighting:
+              \033[107;30m x \033[0m digit is known
+              \033[107;94m x \033[0m digit was given
+              \033[40;97m x \033[0m black cell
+              \033[100;30m x \033[0m unknown cell with possible digits
+              \033[100;33m x \033[0m digit is a row compartment sure candidate
+              \033[100;36m x \033[0m digit is a column compartment sure candidate
+              \033[100;32m x \033[0m digit is both a row and column compartment sure candidate
+              \033[100;31m x \033[0m digit was eliminated
+
+            |<-- This application is best run in a terminal with at least 93 columns. ----------------->|
+            '''))
     parser.add_argument('puzzle', type=str, nargs='*')
     parser.add_argument('-v', '--verbose', action='store_true', help='show final solver results')
     parser.add_argument('-d', '--debug', action='store_true', help='show all solver iterations')
@@ -1910,7 +1934,7 @@ if __name__ == "__main__":
     if args.list:
         for p in puzzles:
             if args.verbose:
-                print('\n', p)
+                _comment('{}'.format(p))
                 print(Board(PUZZLES[p]))
             else:
                 print(p)
