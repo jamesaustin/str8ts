@@ -38,17 +38,6 @@ def _critical(s):
 def _comment(s):
     print('\033[100;97m#    {:<88}\033[0m'.format(s))
 
-
-def _black_ansi(output, black, given, known):
-    if black:
-        return '\033[40;97m%s\033[0m' % output
-    elif given:
-        return '\033[107;94m%s\033[0m' % output
-    elif known:
-        return '\033[107;30m%s\033[0m' % output
-    else:
-        return '\033[100;30m%s\033[0m' % output
-
 ######################################################################################################################
     # Cell and ProxyCell classes
 
@@ -81,37 +70,52 @@ class Cell(object):
 
     def __str__(self):
         if self.is_known():
-            output = self.digits[0]
+            digit = self.digits[0]
         else:
-            output = ' '
+            digit = ' '
 
-        return _black_ansi(output, self.black, self.given, self.is_known())
+        if self.black:
+            return '\033[40;97m{}\033[0m'.format(digit)
+        elif self.given:
+            return '\033[107;94m{}\033[0m'.format(digit)
+        elif self.is_known():
+            return '\033[107;30m{}\033[0m'.format(digit)
+        else:
+            return '\033[100;30m \033[0m'
 
     def __repr__(self):
-        parts = [ ]
+        if self.black:
+            parts = ['\033[40;97m']
+        elif self.given:
+            parts = ['\033[107;94m']
+        elif self.is_known():
+            parts = ['\033[107;30m']
+        else:
+            parts = ['\033[100;30m']
+
         for x in ALL:
-            if x in self.digits:
+            if x in self.removed:
+                parts.append('\033[31m{}\033[30m'.format(x))
+            elif x in self.digits:
                 if self.is_known():
                     parts.append(x)
                 else:
                     sc_row = x in self.sure_candidates_by_row
                     sc_col = x in self.sure_candidates_by_col
                     if sc_row and sc_col:
-                        parts.append('\033[32m%s\033[30m' % x)
+                        parts.append('\033[42m{}\033[100m'.format(x))
                     elif sc_row:
-                        parts.append('\033[33m%s\033[30m' % x)
+                        parts.append('\033[43m{}\033[100m'.format(x))
                     elif sc_col:
-                        parts.append('\033[36m%s\033[30m' % x)
+                        parts.append('\033[46m{}\033[100m'.format(x))
                     else:
                         parts.append(x)
-            elif x in self.removed:
-                parts.append('\033[31m%s\033[30m' % x)
             else:
                 parts.append(' ')
-        output = ''.join(parts)
+        parts.append('\033[0m')
 
         self.removed.clear()
-        return _black_ansi(output, self.black, self.given, self.is_known())
+        return ''.join(parts)
 
     def match(self, other):
         if self.is_black():
@@ -522,6 +526,25 @@ class Board(dict):
             for c in self.compartments_by_col[x]:
                 yield x, c
 
+    def _iter_cross_but(self, x, y):
+        for dx in ACROSS:
+            if dx == x:
+                continue
+            yield (dx, y), self[dx, y]
+        for dy in DOWN:
+            if dy == y:
+                continue
+            yield (x, dy), self[x, dy]
+
+    def _iter_all_but(self, x, y):
+        for dx in ACROSS:
+            if dx == x:
+                continue
+            for dy in DOWN:
+                if dy == y:
+                    continue
+                yield (dx, dy), self[dx, dy]
+
 ######################################################################################################################
     # Methods to generate the sure candidates
 
@@ -695,7 +718,8 @@ class Board(dict):
                 line.append(''.join(parts))
             return '|'.join(line)
 
-        header  = '       1         2         3         4         5         6         7         8         9'
+        key = '\033[43;30mR\033[100m+\033[46;30mC\033[100m=\033[42;30mB\033[0m'
+        header  = key + '  1         2         3         4         5         6         7         8         9'
         divider = '  +---------+---------+---------+---------+---------+---------+---------+---------+---------+'
         lines = [header, divider]
         for y in DOWN:
@@ -1293,26 +1317,66 @@ class Board(dict):
                                                 continue
                                             self[other_x, dy].can_not_be(digits)
 
+    def unique_solution_constraint(self):
+        # This implementation solves the test case - but isn't smart enough to solve many other cases.
+        # Needs a better implementation.
+
+        # First we search for compartments that are isolated.
+        candidates = [ ]
+        for _, compartment in self._iter_compartments_by_row():
+            if len(compartment) == 1:
+                cell = compartment[0]
+                if len(cell.digits) == 2:
+                    candidates.append(cell)
+        singles = [ ]
+        for _, compartment in self._iter_compartments_by_col():
+            if len(compartment) == 1:
+                cell = compartment[0]
+                if cell in candidates:
+                    singles.append(cell)
+        if len(singles) > 0:
+            # This is a list of the isolated compartments
+            for (x, y), c in self.iteritems():
+                if c in singles:
+                    # We want to find a digit that is isolated
+                    compartments_with_digit = DefaultDict(list)
+                    for d in c.digits:
+                        for compartment in self.compartments_by_row[y]:
+                            if c not in compartment:
+                                for dc in compartment:
+                                    if d in dc.digits:
+                                        compartments_with_digit[d].append( (compartment, Cell.get_sc_by_row) )
+                                        break
+                        for compartment in self.compartments_by_col[x]:
+                            if c not in compartment:
+                                for dc in compartment:
+                                    if d in dc.digits:
+                                        compartments_with_digit[d].append( (compartment, Cell.get_sc_by_col) )
+                                        break
+                    # What if two compartments touch this digit?
+                    if len(compartments_with_digit) == 1:
+                        for digit, pack in compartments_with_digit.iteritems():
+                            compartment, sc_fn = pack[0]
+                            c.can_not_be(digit)
+                            for dc in compartment:
+                                if digit in dc.digits:
+                                    sc_fn(dc).add(digit)
+
     def y_wing(self):
         for (x, y), c in self.iteritems():
             if len(c.digits) == 2:
                 c0, c1 = c.digits[0], c.digits[1]
                 # This might be a candidate for BLUE.
-                for dy in DOWN:
-                    if dy == y:
-                        continue
-                    for dx in ACROSS:
-                        if dx == x:
-                            continue
-                        if self[dx, dy].is_unknown() and \
-                            (len(self[dx, y].digits) == 2) and \
-                            (len(self[x, dy].digits) == 2) and \
-                            ( ((c0 in self[dx, y].digits) and (c1 in self[x, dy].digits)) or \
-                              ((c1 in self[dx, y].digits) and (c0 in self[x, dy].digits)) ):
-                            z0 = set(self[dx, y].digits).difference(c.digits)
-                            z1 = set(self[x, dy].digits).difference(c.digits)
-                            if len(z0) == 1 and z0 == z1:
-                                self[dx, dy].can_not_be(z0.pop())
+                for (dx, dy), dc in self._iter_all_but(x, y):
+                    if dc.is_unknown() and \
+                        (len(self[dx, y].digits) == 2) and \
+                        (len(self[x, dy].digits) == 2) and \
+                        ( ((c0 in self[dx, y].digits) and (c1 in self[x, dy].digits)) or \
+                          ((c1 in self[dx, y].digits) and (c0 in self[x, dy].digits)) ):
+                        z0 = set(self[dx, y].digits).difference(c.digits)
+                        z1 = set(self[x, dy].digits).difference(c.digits)
+                        if len(z0) == 1 and z0 == z1:
+                            dc.can_not_be(z0.pop())
 
     def sure_candidate_upgrade_row(self):
         return any(sure_candidate_upgrade_by_cells(self.compartments_by_row[y],
@@ -1399,6 +1463,7 @@ class Board(dict):
         sea_creatures_by_cross_col,
         settis_rule,
         unique_rectangle_rule,
+        unique_solution_constraint,
         y_wing,
         sure_candidate_upgrade_row,
         sure_candidate_upgrade_col,
@@ -1793,6 +1858,10 @@ def tests():
             ['5',      '78', '2349',   '3468'] ], False )
     # pg 45. - Unique Solution Contraint
     #test()
+    # bonus
+    test( Board.unique_solution_constraint,
+          [['19', '#', '45678', '3456789', '345789']],
+          [['1',  '#', '45678', '3456789', '345789']] )
     # pg 46, 47. - Y-Wing
     test( Board.y_wing,
           [ ['23456789', '23456789', '57',  '23789', '#',       '123456789', '123456789', '123456789'],
@@ -1882,9 +1951,9 @@ if __name__ == "__main__":
               \033[107;94m x \033[0m digit was given
               \033[40;97m x \033[0m black cell
               \033[100;30m x \033[0m unknown cell with possible digits
-              \033[100;33m x \033[0m digit is a row compartment sure candidate
-              \033[100;36m x \033[0m digit is a column compartment sure candidate
-              \033[100;32m x \033[0m digit is both a row and column compartment sure candidate
+              \033[100;30m \033[43mx\033[100m \033[0m digit is a row compartment sure candidate
+              \033[100;30m \033[46mx\033[100m \033[0m digit is a column compartment sure candidate
+              \033[100;30m \033[42mx\033[100m \033[0m digit is both a row and column compartment sure candidate
               \033[100;31m x \033[0m digit was eliminated
 
             |<-- This application is best run in a terminal with at least 93 columns. ----------------->|
