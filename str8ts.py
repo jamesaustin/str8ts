@@ -86,10 +86,12 @@ class Cell(object):
     def __repr__(self):
         if self.black:
             parts = ['\033[40;97m']
-        elif self.given:
-            parts = ['\033[107;94m']
+        elif self.is_unknown():
+            parts = ['\033[100;30m']
         elif self.is_known():
             parts = ['\033[107;30m']
+        elif self.given:
+            parts = ['\033[107;94m']
         else:
             parts = ['\033[100;30m']
 
@@ -288,6 +290,32 @@ def bridging_digits_by_cells(compartment):
                     remove.add(d)
             for d in remove:
                 cell.can_not_be(d)
+
+def stranded_by_bridge_by_cells(compartment):
+    counts = Counter()
+    for c in compartment:
+        for d in c.digits:
+            counts[d] += 1
+    # Search for a cell that has multiple singles
+    for c in compartment:
+        singles = set(d for d in c.digits if counts[d] == 1)
+        if len(singles) > 1:
+            # If a single can only be in a solution *including* another solution, then it is removed.
+            len_compartment = len(compartment)
+            min_digit, max_digit = min(counts), max(counts)
+            min_digit_index, max_digit_index = ALL.index(min_digit), ALL.index(max_digit)
+            solutions = [ALL[i:i + len_compartment] for i in range(min_digit_index, max_digit_index + 2 - len_compartment)]
+
+            isolated_singles = set()
+            for s in solutions:
+                found_singles = set(single for single in singles if single in s)
+                if len(found_singles) == 1:
+                    isolated_singles.update(found_singles)
+            for s in singles:
+                if s not in isolated_singles:
+                    # This single is illegal.
+                    for c in compartment:
+                        c.can_not_be(s)
 
 def naked_groups_by_cells(cells):
     # For each line we consider all combinations searching for naked groups
@@ -859,6 +887,14 @@ class Board(dict):
     def bridging_digits_by_col(self):
         for _, compartment in self._iter_compartments_by_col():
             bridging_digits_by_cells(compartment)
+
+    def stranded_by_bridge_by_row(self):
+        for _, compartment in self._iter_compartments_by_row():
+            stranded_by_bridge_by_cells(compartment)
+
+    def stranded_by_bridge_by_col(self):
+        for _, compartment in self._iter_compartments_by_col():
+            stranded_by_bridge_by_cells(compartment)
 
     def split_compartments_by_row(self):
         for _, compartment in self._iter_compartments_by_row():
@@ -1469,6 +1505,8 @@ class Board(dict):
         sure_candidate_upgrade_col,
         sure_candidate_range_check_row,
         sure_candidate_range_check_col,
+        stranded_by_bridge_by_row,
+        stranded_by_bridge_by_col,
         chain_contradiction
     ]
 
@@ -1617,6 +1655,16 @@ def tests():
     test( [Board.bridging_digits_by_row, Board.bridging_digits_by_col],
           [['124678', '5', '234678', '#', '12678', '12367', 'i', '12367', '1234']],
           [['124678', '5', '234678', '#', '12678', '12367', 'i', '123', '1234']] )
+    # bonus. Better stranded + bridging digits
+    test( [Board.stranded_by_bridge_by_row, Board.stranded_by_bridge_by_col],
+          [['347', '2347', '34568', '1245']],
+          [['347', '2347', '3456',  '1245']] )
+    test( [Board.stranded_by_bridge_by_row, Board.stranded_by_bridge_by_col],
+          [['46', '1235789', '1235789', '1235789']],
+          [['46', '1235789', '1235789', '1235789']] )
+    test( [Board.stranded_by_bridge_by_row, Board.stranded_by_bridge_by_col],
+          [['17', '23458', '69', '23458', '23458', '23458']],
+          [['17', '23458', '6',  '23458', '23458', '23458']] )
     # pg 14. + 15. Split Compartments
     test( [Board.split_compartments_by_row, Board.split_compartments_by_col],
           [['23678', '124678', '236789', '123467']],
