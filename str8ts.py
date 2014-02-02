@@ -183,6 +183,20 @@ class ProxyCell(object):
 ######################################################################################################################
     # Solver functions
 
+def generate_compartments_by_cell(cells):
+    compartments = [ ]
+    compartment = [ ]
+    for c in cells:
+        if c.is_white():
+            compartment.append(c)
+        elif len(compartment) > 0:
+            compartments.append(compartment)
+            compartment = [ ]
+    else:
+        if len(compartment) > 0:
+            compartments.append(compartment)
+    return compartments
+
 def compartment_range_check_by_cells(compartment):
     reach = len(compartment) - 1
 
@@ -495,8 +509,8 @@ class Board(dict):
 
         self.chain_length = chain_length
         # Generate and store compartments
-        self.compartments_by_row = self._compartments_by_row()
-        self.compartments_by_col = self._compartments_by_col()
+        self.compartments_by_row = self._generate_compartments_by_row()
+        self.compartments_by_col = self._generate_compartments_by_col()
         # Generate and store the sure candidates
         self.sure_candidates_by_cross_row = DefaultDict(set)
         self.sure_candidates_by_cross_col = DefaultDict(set)
@@ -510,39 +524,11 @@ class Board(dict):
 ######################################################################################################################
     # Methods to generate and iterate the compartments
 
-    def _compartments_by_row(self):
-        compartments = { }
-        for y in DOWN:
-            compartment = [ ]
-            c = [ ]
-            for x in ACROSS:
-                if self[x, y].is_white():
-                    c.append(self[x, y])
-                elif len(c) > 0:
-                    compartment.append(c)
-                    c = [ ]
-            else:
-                if len(c) > 0:
-                    compartment.append(c)
-            compartments[y] = compartment
-        return compartments
+    def _generate_compartments_by_row(self):
+        return { y: generate_compartments_by_cell([self[x, y] for x in ACROSS]) for y in DOWN }
 
-    def _compartments_by_col(self):
-        compartments = { }
-        for x in ACROSS:
-            compartment = [ ]
-            c = [ ]
-            for y in DOWN:
-                if self[x, y].is_white():
-                    c.append(self[x, y])
-                elif len(c) > 0:
-                    compartment.append(c)
-                    c = [ ]
-            else:
-                if len(c) > 0:
-                    compartment.append(c)
-            compartments[x] = compartment
-        return compartments
+    def _generate_compartments_by_col(self):
+        return { x: generate_compartments_by_cell([self[x, y] for y in DOWN]) for x in ACROSS }
 
     def _iter_compartments_by_row(self):
         for y in DOWN:
