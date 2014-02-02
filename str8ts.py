@@ -1990,6 +1990,26 @@ if __name__ == "__main__":
               \033[100;30m \033[42mx\033[100m \033[0m digit is both a row and column compartment sure candidate
               \033[100;31m x \033[0m digit was eliminated
 
+            Verbose solutions use the following code, adapted from SlowThinker's scheme:
+              N  - number was last candidate in the field
+              s  - \033[4;1ms\033[0mingle candidate for number in compartment
+              c  - \033[4;1mc\033[0mompartment range check
+              d  - \033[4;1md\033[0migits stranded (unreachable / impossible)
+              h  - \033[4;1mh\033[0migh / low range check across compartments
+              L  - \033[4;1mL\033[0marge gap field
+              p  - naked \033[4;1mp\033[0mair
+              t  - naked \033[4;1mt\033[0mriple
+              q  - naked \033[4;1mq\033[0muadruple
+              p\033[2mh\033[0m - hidden \033[4;1mp\033[0mair
+              t\033[2mh\033[0m - hidden \033[4;1mt\033[0mriple
+              q\033[2mh\033[0m - hidden \033[4;1mq\033[0muadruple
+              x\033[2mx\033[0m - \033[4;1mX\033[0m-wing (2 rows / 2 columns) on \033[4;1mx\033[0m
+              w\033[2mx\033[0m - S\033[4;1mw\033[0mordfish (3 rows / 3 columns) on \033[4;1mx\033[0m
+              j\033[2mx\033[0m - \033[4;1mJ\033[0mellyfish (4 rows / 4 columns) on \033[4;1mx\033[0m
+              S\033[2mx\033[0m - \033[4;1mS\033[0metti's rule on \033[4;1mx\033[0m
+              u  - \033[4;1mu\033[0mnique rectangle
+              y  - \033[4;1mY\033[0m-Wing or X\033[4;1mY\033[0m-chains
+
             |<-- This application is best run in a terminal with at least 93 columns. ----------------->|
             '''))
     parser.add_argument('puzzle', type=str, nargs='*')
