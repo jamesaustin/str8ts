@@ -189,11 +189,11 @@ def generate_compartments_by_cell(cells):
     for c in cells:
         if c.is_white():
             compartment.append(c)
-        elif len(compartment) > 0:
+        elif compartment:
             compartments.append(compartment)
             compartment = [ ]
     else:
-        if len(compartment) > 0:
+        if compartment:
             compartments.append(compartment)
     return compartments
 
@@ -226,7 +226,7 @@ def compartment_range_check_by_cells(compartment):
     digits_out_of_range = ALL[:max(max(lowest) - reach, 0)] + \
                           ALL[min(highest) + reach + 1:]
 
-    if len(digits_out_of_range) > 0:
+    if digits_out_of_range:
         for c in compartment:
             c.can_not_be(digits_out_of_range)
 
@@ -234,7 +234,7 @@ def sure_candidates_by_cells(compartment, line, sc_fn):
     union = set()
     for c in compartment:
         union.update(sc_fn(c))
-    if len(union) > 0:
+    if union:
         # We can remove the sure candidates from all other cells outside of the compartment
         for c in line:
             if c in compartment:
@@ -261,11 +261,11 @@ def stranded_digits_by_cells(compartment):
         for n in ALL:
             if n in union_of_compartment:
                 g.append(n)
-            elif len(g) > 0:
+            elif g:
                 yield g
                 g = [ ]
         else:
-            if len(g) > 0:
+            if g:
                 yield(g)
 
     # We now union the available digits in the group.
@@ -361,7 +361,7 @@ def split_compartments_by_cells(compartment):
         if g not in union:
             below = set(d for d in union if d < g)
             above = set(d for d in union if d > g)
-            if len(below) > 0 and len(above) > 0:
+            if below and above:
                 #print('Split compartment col:{}{} below:{} gap:{} above:{}'.format(x, compartment, below, g, above))
                 above_cells = [ProxyCell(below.intersection(c.digits), c) for c in compartment]
                 below_cells = [ProxyCell(above.intersection(c.digits), c) for c in compartment]
@@ -415,7 +415,7 @@ def hidden_group_by_cells(compartment, sc_fn):
     union = set()
     for c in compartment:
         union.update(sc_fn(c))
-    if len(union) > 0:
+    if union:
         for r in xrange(2, len(union)):
             for combination in combinations(union, r):
                 # We count the cells that have contain these sure candidates
@@ -471,8 +471,8 @@ def sure_candidate_upgrade_by_cells(compartments, sure_candidates, sc_fn):
 
 def sure_candidate_range_check_by_cells(compartment, sc_fn):
     # We need to make sure that all digits are within range of the sure candidates.
-    sc_for_compartment = [sc_fn(c) for c in compartment if len(sc_fn(c)) > 0]
-    if len(sc_for_compartment) > 0:
+    sc_for_compartment = [sc_fn(c) for c in compartment if sc_fn(c)]
+    if sc_for_compartment:
         sc_min = min(min(sc) for sc in sc_for_compartment)
         sc_max = max(max(sc) for sc in sc_for_compartment)
         sc_min_index = ALL.index(sc_min)
@@ -480,7 +480,7 @@ def sure_candidate_range_check_by_cells(compartment, sc_fn):
 
         len_compartment = len(compartment)
         out_of_range = ALL[:max(sc_max_index - len_compartment + 1, 0)] + ALL[sc_min_index + len_compartment:]
-        if len(out_of_range) > 0:
+        if out_of_range:
             if False:
                 print('compartment', compartment)
                 print('sc for compartment', sc_for_compartment)
@@ -625,7 +625,7 @@ class Board(dict):
                     highest_range = set(ALL[index_max - len_compartment:index_max])
                     intersection = lowest_range.intersection(highest_range)
 
-                    if len(intersection) > 0:
+                    if intersection:
                         # Add the sure candidates to each cell assuming they're present.
                         self.sure_candidates_by_cross_row[y].update(intersection)
                         for c in compartment:
@@ -697,7 +697,7 @@ class Board(dict):
                     highest_range = set(ALL[index_max - len_compartment:index_max])
                     intersection = lowest_range.intersection(highest_range)
 
-                    if len(intersection) > 0:
+                    if intersection:
                         # Add the sure candidates to each cell assuming they're present.
                         self.sure_candidates_by_cross_col[x].update(intersection)
                         for c in compartment:
@@ -936,7 +936,7 @@ class Board(dict):
             d_sure_candidates = { }
             for y in DOWN:
                 candidates = set([x for x in ACROSS if self[x, y].is_unknown() and d in self[x, y].sure_candidates_by_row])
-                if len(candidates) > 0:
+                if candidates:
                     d_sure_candidates[y] = candidates
 
             # ??? Is it better to search from large to small?
@@ -990,7 +990,7 @@ class Board(dict):
             d_sure_candidates = { }
             for x in ACROSS:
                 candidates = set([y for y in DOWN if self[x, y].is_unknown() and d in self[x, y].sure_candidates_by_col])
-                if len(candidates) > 0:
+                if candidates:
                     d_sure_candidates[x] = candidates
 
             # ??? Is it better to search from large to small?
@@ -1044,7 +1044,7 @@ class Board(dict):
             for y in DOWN:
                 if d in self.sure_candidates_by_cross_row[y]:
                     candidates = set([x for x in ACROSS if d in self[x, y].digits])
-                    if len(candidates) > 0:
+                    if candidates:
                         d_sure_candidates[y] = candidates
 
             # ??? Is it better to search from large to small?
@@ -1094,7 +1094,7 @@ class Board(dict):
             for x in ACROSS:
                 if d in self.sure_candidates_by_cross_col[x]:
                     candidates = set([y for y in DOWN if d in self[x, y].digits])
-                    if len(candidates) > 0:
+                    if candidates:
                         d_sure_candidates[x] = candidates
 
             # ??? Is it better to search from large to small?
@@ -1356,7 +1356,7 @@ class Board(dict):
                 cell = compartment[0]
                 if cell in candidates:
                     singles.append(cell)
-        if len(singles) > 0:
+        if singles:
             # This is a list of the isolated compartments
             for (x, y), c in self.iteritems():
                 if c in singles:
