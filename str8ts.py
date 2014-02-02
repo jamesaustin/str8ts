@@ -5,6 +5,8 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from copy import deepcopy
 from fnmatch import fnmatch
 from textwrap import dedent
+from timeit import default_timer as timer
+from re import sub as re_sub
 
 BLACK = '#'
 UNKNOWN = ['.', ' ', '*']
@@ -37,6 +39,9 @@ def _critical(s):
 
 def _comment(s):
     print('\033[100;97m#    {:<88}\033[0m'.format(s))
+
+def _info(s):
+    print('\033[100;34mINFO\033[0m {}'.format(s))
 
 ######################################################################################################################
     # Cell and ProxyCell classes
@@ -518,8 +523,10 @@ class Board(dict):
         self._sure_candidates_by_col()
         # Known digits
         self._known_cells = { }
+        # Counters to tracking the solver
         self.counts = Counter()
         self.hits = Counter()
+        self.durations = DefaultDict(float)
 
 ######################################################################################################################
     # Methods to generate and iterate the compartments
@@ -922,11 +929,11 @@ class Board(dict):
         for _, compartment in self._iter_compartments_by_col():
             hidden_group_by_cells(compartment, Cell.get_sc_by_col)
 
-    def hidden_group_by_cross_row(self):
+    def hidden_group_cross_by_row(self):
         for y in DOWN:
             hidden_group_by_cross_cells([self[x, y] for x in ACROSS], self.sure_candidates_by_cross_row[y])
 
-    def hidden_group_by_cross_col(self):
+    def hidden_group_cross_by_col(self):
         for x in ACROSS:
             hidden_group_by_cross_cells([self[x, y] for y in DOWN], self.sure_candidates_by_cross_col[x])
 
@@ -1037,8 +1044,8 @@ class Board(dict):
             if _sea_creatures_by_col(d):
                 break
 
-    def sea_creatures_by_cross_row(self):
-        def _sea_creatures_by_cross_row(d):
+    def sea_creatures_cross_by_row(self):
+        def _sea_creatures_cross_by_row(d):
             hit = False
             d_sure_candidates = { }
             for y in DOWN:
@@ -1084,11 +1091,11 @@ class Board(dict):
             return hit
 
         for d in ALL:
-            if _sea_creatures_by_cross_row(d):
+            if _sea_creatures_cross_by_row(d):
                 break
 
-    def sea_creatures_by_cross_col(self):
-        def _sea_creatures_by_cross_col(d):
+    def sea_creatures_cross_by_col(self):
+        def _sea_creatures_cross_by_col(d):
             hit = False
             d_sure_candidates = { }
             for x in ACROSS:
@@ -1134,7 +1141,7 @@ class Board(dict):
             return hit
 
         for d in ALL:
-            if _sea_creatures_by_cross_col(d):
+            if _sea_creatures_cross_by_col(d):
                 break
 
     def settis_rule(self):
@@ -1400,21 +1407,21 @@ class Board(dict):
                         if len(z0) == 1 and z0 == z1:
                             dc.can_not_be(z0.pop())
 
-    def sure_candidate_upgrade_row(self):
+    def sure_candidate_upgrade_by_row(self):
         return any(sure_candidate_upgrade_by_cells(self.compartments_by_row[y],
                                                    self.sure_candidates_by_cross_row[y],
                                                    Cell.get_sc_by_row) for y in DOWN)
 
-    def sure_candidate_upgrade_col(self):
+    def sure_candidate_upgrade_by_col(self):
         return any(sure_candidate_upgrade_by_cells(self.compartments_by_col[x],
                                                    self.sure_candidates_by_cross_col[x],
                                                    Cell.get_sc_by_col) for x in ACROSS)
 
-    def sure_candidate_range_check_row(self):
+    def sure_candidate_range_by_row(self):
         for _, compartment in self._iter_compartments_by_row():
             sure_candidate_range_check_by_cells(compartment, Cell.get_sc_by_row)
 
-    def sure_candidate_range_check_col(self):
+    def sure_candidate_range_by_col(self):
         for _, compartment in self._iter_compartments_by_col():
             sure_candidate_range_check_by_cells(compartment, Cell.get_sc_by_col)
 
@@ -1476,21 +1483,21 @@ class Board(dict):
         naked_groups_by_row,
         hidden_group_by_row,
         hidden_group_by_col,
-        hidden_group_by_cross_row,
-        hidden_group_by_cross_col,
+        hidden_group_cross_by_row,
+        hidden_group_cross_by_col,
         # TODO - Locked Compartments
         sea_creatures_by_row,
         sea_creatures_by_col,
-        sea_creatures_by_cross_row,
-        sea_creatures_by_cross_col,
+        sea_creatures_cross_by_row,
+        sea_creatures_cross_by_col,
         settis_rule,
         unique_rectangle_rule,
         unique_solution_constraint,
         y_wing,
-        sure_candidate_upgrade_row,
-        sure_candidate_upgrade_col,
-        sure_candidate_range_check_row,
-        sure_candidate_range_check_col,
+        sure_candidate_upgrade_by_row,
+        sure_candidate_upgrade_by_col,
+        sure_candidate_range_by_row,
+        sure_candidate_range_by_col,
         stranded_by_bridge_by_row,
         stranded_by_bridge_by_col,
         chain_contradiction
@@ -1508,23 +1515,29 @@ class Board(dict):
         completeness = self._completeness()
         while completeness != 729:
             for s in steps:
+                start_time = timer()
                 hit = s(self)
+                end_time = timer()
+
+                step_name = s.__name__
+                self.durations[step_name] += end_time - start_time
+
                 iteration += 1
 
                 c = self._completeness()
                 if hit or completeness != c:
-                    self.counts[s.__name__] += c - completeness
-                    self.hits[s.__name__] += 1
+                    self.counts[step_name] += c - completeness
+                    self.hits[step_name] += 1
                     if debug:
-                        if s.__name__ in [ 'remove_used_digits',
-                                           'sure_candidates_by_row',
-                                           'sure_candidates_by_col',
-                                           'compartment_range_check_by_row',
-                                           'compartment_range_check_by_col',
-                                           'stranded_digits' ]:
-                            _hit(s.__name__)
+                        if step_name in [ 'remove_used_digits',
+                                          'sure_candidates_by_row',
+                                          'sure_candidates_by_col',
+                                          'compartment_range_check_by_row',
+                                          'compartment_range_check_by_col',
+                                          'stranded_digits' ]:
+                            _hit(step_name)
                         else:
-                            _caution(s.__name__)
+                            _caution(step_name)
                         _dump()
                         _comment('Iteration {}: {:.2%} ({} of 729)'.format(iteration, float(c) / 729, c))
                         # Check if there are any errors
@@ -1533,7 +1546,7 @@ class Board(dict):
                     break
                 else:
                     if debug:
-                        _miss(s.__name__)
+                        _miss(step_name)
 
             else:
                 if self._completeness() == completeness:
@@ -1703,7 +1716,7 @@ def tests():
             ['346', '12589', '367', '12589', '1259', '3467', '34', '#'],
             ['1479', '2568', '2356', '1479', '356', '1479', '2368', '2568'] ] )
     # pg 24. Cross-compartment Hidden Sets
-    test( [Board.hidden_group_by_cross_row, Board.hidden_group_by_cross_col],
+    test( [Board.hidden_group_cross_by_row, Board.hidden_group_cross_by_col],
           [['2569', '1234678', '12569', '1234578', '#', '12569', '234578', '2569', '1234678']],
           [['2569', '3478',    '12569', '3478',    '#', '12569', '3478',   '2569', '3478']] )
     # pg 25, 26, 27. Locked Compartments
@@ -1804,7 +1817,7 @@ def tests():
             ['235689',   '1456',    '124579',  '4568',     '12347',    '46789',   '478',    '12489',    '12478'   ],
             ['12346789', '1234689', '1234789', '12346789', '12346789', '456789',  '456789', '12456789', '12456789'] ] )
     # pg 37. Cross-compartment Sea Creatures
-    test( [Board.sea_creatures_by_cross_col, Board.sea_creatures_by_cross_row],
+    test( [Board.sea_creatures_cross_by_col, Board.sea_creatures_cross_by_row],
           # col and row deliberately swapped to fit test case
           [ ['134',  '1345',  '1356789' ],
             ['1234', '12345', '1234568' ],
@@ -2023,6 +2036,7 @@ if __name__ == "__main__":
     parser.add_argument('--no-tests', dest='tests', action='store_false', help='disable built in technique tests')
     parser.add_argument('--no-counts', dest='counts', action='store_false', help='disable technique counts')
     parser.add_argument('--no-totals', dest='totals', action='store_false', help='disable solver success counts')
+    parser.add_argument('--no-times', dest='times', action='store_false', help='disable solver rule times')
     parser.add_argument('--tidy', action='store_true', help='tidy the included puzzles and exit')
     args = parser.parse_args()
 
@@ -2074,6 +2088,7 @@ if __name__ == "__main__":
 
     counts = Counter()
     hits = Counter()
+    durations = DefaultDict(float)
     success, failed = 0, 0
     if puzzles:
         _comment('Puzzle       [Iter] [Techniques] [Digits #  ]')
@@ -2088,6 +2103,8 @@ if __name__ == "__main__":
                     counts[rule] += count
                 for rule, hit in b.hits.iteritems():
                     hits[rule] += hit
+                for rule, duration in b.durations.iteritems():
+                    durations[rule] += duration
             except Board.InvalidSolution as e:
                 _log_exception(name, e, b)
                 b = Board(PUZZLES[name])
@@ -2096,18 +2113,37 @@ if __name__ == "__main__":
                 except Board.InvalidSolution as f:
                     _log_exception(name, f, b)
                     exit()
+
     if args.counts:
         counts_total = sum(counts.values())
         hits_total = sum(hits.values())
+        duration_total = sum(durations.values())
         rules = [r.__name__ for r in Board.steps]
-        _comment('Technique                      [Ord] [Hit %  Hit #] [Digit %  Digit #]')
+        _comment('Technique                      [Ord] [Time % Seconds] [Hit %  Hit #] [Digit %  Digit #]')
         for rule, hit in sorted(hits.iteritems(), reverse=True, key=lambda k_v: k_v[1]):
-            _hit(' {:<30} [#{:2}] [{:>5.1%} {:>6}] [{:>5.1%} {:>10}]'.format(rule, rules.index(rule),
-                float(hit) / hits_total, hit, float(counts[rule]) / counts_total, counts[rule]))
+            _hit(' {:<30} [#{:2}] [{:>5.1%} {:>7.2f}s] [{:>5.1%} {:>6}] [{:>5.1%} {:>10}]'.format(
+                rule, rules.index(rule),
+                durations[rule] / duration_total, durations[rule],
+                float(hit) / hits_total, hit,
+                float(counts[rule]) / counts_total, counts[rule] ) )
         for rule_fn in Board.steps:
             rule = rule_fn.__name__
             if rule not in hits:
-                _miss('{:<30} [#{:2}]'.format(rule, rules.index(rule)))
+                _miss('{:<30} [#{:2}] [{:>5.1%} {:>7.2f}s]'.format(rule, rules.index(rule),
+                    durations[rule] / duration_total, durations[rule]))
+    if args.times:
+        duration_total = sum(durations.values())
+        rule_times = DefaultDict(float)
+        for rule, duration in durations.iteritems():
+            rule = re_sub('(_by_row|_by_col)$', '', rule)
+            rule_times[rule] += duration
+        _comment('Rule Times                     [Time % Seconds]')
+        for rule, duration in sorted(rule_times.iteritems(), reverse=True, key=lambda k_v: k_v[1]):
+            if duration > 0:
+                _hit(' {:<30} [{:>5.1%} {:>7.3f}s]'.format(rule, duration / duration_total, duration))
+            else:
+                _miss('{:<30} [{:>5.1%} {:>7.3f}s]'.format(rule, duration / duration_total, duration))
+        _info('                         Total [ {:12.3f}s]'.format(sum(durations.values())))
     if args.totals:
         _comment('Total # Puzzles')
         _pass('{} boards'.format(success))
