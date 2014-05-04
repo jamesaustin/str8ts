@@ -2038,6 +2038,8 @@ if __name__ == "__main__":
     parser.add_argument('--no-totals', dest='totals', action='store_false', help='disable solver success counts')
     parser.add_argument('--no-times', dest='times', action='store_false', help='disable solver rule times')
     parser.add_argument('--tidy', action='store_true', help='tidy the included puzzles and exit')
+    parser.add_argument('--hint', metavar='RC=N', nargs='+',
+                        help='Manual include a hint whilst solving, example A1=1')
     args = parser.parse_args()
 
     if args.tidy and args.include:
@@ -2094,6 +2096,17 @@ if __name__ == "__main__":
         _comment('Puzzle       [Iter] [Techniques] [Digits #  ]')
         for name in puzzles:
             b = Board(PUZZLES[name], args.chain_length)
+
+            # Apply hints if we have any - useful for testing guesses
+            if args.hint:
+                for hint in args.hint:
+                    cell, value = hint.split('=')
+                    if cell[0] not in DOWN or cell[1] not in ACROSS or value not in ALL:
+                        _critical('Invalid hint: {}'.format(hint))
+                    else:
+                        _info('Applying hint: {}'.format(hint))
+                        b[cell[1], cell[0]].value_is(value)
+
             try:
                 if b.solve(name, verbose=args.verbose, debug=args.debug, sure=args.sure):
                     success += 1
