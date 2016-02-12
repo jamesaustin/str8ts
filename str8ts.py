@@ -741,7 +741,7 @@ class Board(dict):
 
         key = '\033[43;30mR\033[100m+\033[46;30mC\033[100m=\033[42;30mB\033[0m'
         header  = key + '  1         2         3         4         5         6         7         8         9'
-        divider = '  +---------+---------+---------+---------+---------+---------+---------+---------+---------+'
+        divider = '  \033[40m+---------+---------+---------+---------+---------+---------+---------+---------+---------+\033[0m'
         lines = [header, divider]
         for y in DOWN:
             # Help with debugging the tests
@@ -753,11 +753,11 @@ class Board(dict):
                     break
 
             parts = [repr(self[x, y]) for x in ACROSS]
-            line = '|'.join(parts)
-            lines.append('%s |%s|' % (y, line))
+            line = '\033[40m|\033[0m'.join(parts)
+            lines.append('%s \033[40m|\033[0m%s\033[40m|\033[0m' % (y, line))
             if sure_candidates:
-                lines.append(' R|%s|' % _sc(y, 'sure_candidates_by_row'))
-                lines.append(' C|%s|' % _sc(y, 'sure_candidates_by_col'))
+                lines.append(' R\033[40m|\033[0m%s\033[40m|\033[0m' % _sc(y, 'sure_candidates_by_row'))
+                lines.append(' C\033[40m|\033[0m%s\033[40m|\033[0m' % _sc(y, 'sure_candidates_by_col'))
             lines.append(divider)
         return '\n'.join(lines)
 
@@ -1905,6 +1905,10 @@ def tests():
             ['5',      '78', '2349',   '3468'] ], False )
     # pg 45. - Unique Solution Contraint
     #test()
+
+    # TODO - If a cell is the only cell in a coloum AND row with a number then it must be that number.
+    # See: https://www.youtube.com/watch?v=kI_54OEMce4
+
     # bonus
     test( Board.unique_solution_constraint,
           [['19', '#', '45678', '3456789', '345789']],
