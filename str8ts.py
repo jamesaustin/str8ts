@@ -763,13 +763,16 @@ class Board(dict):
                     else:
                         parts.append(" ")
                 line.append("".join(parts))
-            return "|".join(line)
+            return "│".join(line)
 
         key = "\033[43;30mR\033[100m+\033[46;30mC\033[100m=\033[42;30mB\033[0m"
         header = key + "  1         2         3         4         5         6         7         8         9"
-        divider = "  \033[40m+---------+---------+---------+---------+---------+---------+---------+---------+---------+\033[0m"
-        lines = [header, divider]
-        for y in DOWN:
+
+        top =     "  \033[40m┌─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐\033[0m"
+        divider = "  \033[40m├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤\033[0m"
+        bottom =  "  \033[40m└─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘\033[0m"
+        lines = [header, top]
+        for n, y in enumerate(DOWN):
             # Help with debugging the tests
             if lean:
                 for x in ACROSS:
@@ -779,12 +782,14 @@ class Board(dict):
                     break
 
             parts = [repr(self[x, y]) for x in ACROSS]
-            line = "\033[40m|\033[0m".join(parts)
-            lines.append("%s \033[40m|\033[0m%s\033[40m|\033[0m" % (y, line))
+            line = "\033[40m│\033[0m".join(parts)
+            lines.append("%s \033[40m│\033[0m%s\033[40m│\033[0m" % (y, line))
             if sure_candidates:
-                lines.append(" R\033[40m|\033[0m%s\033[40m|\033[0m" % _sc(y, "sure_candidates_by_row"))
-                lines.append(" C\033[40m|\033[0m%s\033[40m|\033[0m" % _sc(y, "sure_candidates_by_col"))
-            lines.append(divider)
+                lines.append(" R\033[40m│\033[0m%s\033[40m│\033[0m" % _sc(y, "sure_candidates_by_row"))
+                lines.append(" C\033[40m│\033[0m%s\033[40m│\033[0m" % _sc(y, "sure_candidates_by_col"))
+            if n < len(DOWN) - 1:
+                lines.append(divider)
+        lines.append(bottom)
         return "\n".join(lines)
 
     def _clear_removed(self):
