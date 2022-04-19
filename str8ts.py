@@ -255,7 +255,7 @@ def singles_by_cell(compartment, sc_fn):
             digit_in_cells[d].add(c)
 
     # If any sure candidate is only in one cell, then cell is the sure candidate
-    for d, cells in digit_in_cells.iteritems():
+    for d, cells in digit_in_cells.items():
         if len(cells) == 1:
             c = cells.pop()
             c.value_is(d)
@@ -338,7 +338,7 @@ def stranded_by_bridge_by_cells(compartment):
 
 def naked_groups_by_cells(cells):
     # For each line we consider all combinations searching for naked groups
-    for r in xrange(len(cells), 1, -1):
+    for r in range(len(cells), 1, -1):
         for combination in combinations(cells, r):
             digits = set()
             for c in combination:
@@ -421,7 +421,7 @@ def hidden_group_by_cells(compartment, sc_fn):
     for c in compartment:
         union.update(sc_fn(c))
     if union:
-        for r in xrange(2, len(union)):
+        for r in range(2, len(union)):
             for combination in combinations(union, r):
                 # We count the cells that have contain these sure candidates
                 cells = set()
@@ -439,7 +439,7 @@ def hidden_group_by_cells(compartment, sc_fn):
                         c.can_not_be(can_not_be)
 
 def hidden_group_by_cross_cells(compartment, sure_candidates):
-    for r in xrange(2, len(sure_candidates)):
+    for r in range(2, len(sure_candidates)):
         for combination in combinations(sure_candidates, r):
             # We count the cells that have contain these sure candidates
             cells = set()
@@ -584,7 +584,7 @@ class Board(dict):
                     # Generate all possible combinations of str8ts for the compartment.
                     len_compartment = len(compartment)
                     c_combinations = [ ]
-                    for n in xrange(1 + len(union_list) - len_compartment):
+                    for n in range(1 + len(union_list) - len_compartment):
                         index_start = ALL.index(union_list[n])
                         index_end = ALL.index(union_list[n + len_compartment - 1])
                         if index_end - index_start == len_compartment - 1:
@@ -656,7 +656,7 @@ class Board(dict):
                     # Generate all possible combinations of str8ts for the compartment.
                     len_compartment = len(compartment)
                     c_combinations = [ ]
-                    for n in xrange(1 + len(union_list) - len_compartment):
+                    for n in range(1 + len(union_list) - len_compartment):
                         index_start = ALL.index(union_list[n])
                         index_end = ALL.index(union_list[n + len_compartment - 1])
                         if index_end - index_start == len_compartment - 1:
@@ -775,18 +775,18 @@ class Board(dict):
 
     def _completeness(self):
         completeness = 0
-        for c in self.itervalues():
+        for c in self.values():
             if c.is_known():
                 completeness += 9
             else:
                 completeness += 9 - len(c.digits)
-        return completeness 
+        return completeness
 
     class InvalidSolution(Exception):
         pass
 
     def _valid(self):
-        for _, c in self.iteritems():
+        for _, c in self.items():
             if c.is_white():
                 if len(c.digits) == 0:
                     raise Board.InvalidSolution(x, y, c.digits)
@@ -830,7 +830,7 @@ class Board(dict):
 ######################################################################################################################
 
     def remove_used_digits(self):
-        for (cx, cy), c in self.iteritems():
+        for (cx, cy), c in self.items():
             if c.is_known() and (cx, cy) not in self._known_cells:
                 cn = c.value()
                 for x in ACROSS:
@@ -947,7 +947,7 @@ class Board(dict):
                     d_sure_candidates[y] = candidates
 
             # ??? Is it better to search from large to small?
-            for r in xrange(2, len(d_sure_candidates) + 1):
+            for r in range(2, len(d_sure_candidates) + 1):
                 for combination in combinations(d_sure_candidates, r):
                     # Merge the combinations
                     d_sure_union = set()
@@ -1001,7 +1001,7 @@ class Board(dict):
                     d_sure_candidates[x] = candidates
 
             # ??? Is it better to search from large to small?
-            for r in xrange(2, len(d_sure_candidates) + 1):
+            for r in range(2, len(d_sure_candidates) + 1):
                 for combination in combinations(d_sure_candidates, r):
                     # Merge the combinations
                     d_sure_union = set()
@@ -1055,7 +1055,7 @@ class Board(dict):
                         d_sure_candidates[y] = candidates
 
             # ??? Is it better to search from large to small?
-            for r in xrange(2, len(d_sure_candidates) + 1):
+            for r in range(2, len(d_sure_candidates) + 1):
                 for combination in combinations(d_sure_candidates, r):
                     # Merge the combinations
                     d_sure_union = set()
@@ -1105,7 +1105,7 @@ class Board(dict):
                         d_sure_candidates[x] = candidates
 
             # ??? Is it better to search from large to small?
-            for r in xrange(2, len(d_sure_candidates) + 1):
+            for r in range(2, len(d_sure_candidates) + 1):
                 for combination in combinations(d_sure_candidates, r):
                     # Merge the combinations
                     d_sure_union = set()
@@ -1290,7 +1290,7 @@ class Board(dict):
         return any(map(_settis_rule, ALL))
 
     def unique_rectangle_rule(self):
-        for (x, y), c in self.iteritems():
+        for (x, y), c in self.items():
             if len(c.digits) == 2:
                 for dy in DOWN:
                     if dy == y:
@@ -1365,7 +1365,7 @@ class Board(dict):
                     singles.append(cell)
         if singles:
             # This is a list of the isolated compartments
-            for (x, y), c in self.iteritems():
+            for (x, y), c in self.items():
                 if c in singles:
                     # We want to find a digit that is isolated
                     compartments_with_digit = DefaultDict(list)
@@ -1384,7 +1384,7 @@ class Board(dict):
                                         break
                     # What if two compartments touch this digit?
                     if len(compartments_with_digit) == 1:
-                        for digit, pack in compartments_with_digit.iteritems():
+                        for digit, pack in compartments_with_digit.items():
                             compartment, sc_fn = pack[0]
                             c.can_not_be(digit)
                             for dc in compartment:
@@ -1392,7 +1392,7 @@ class Board(dict):
                                     sc_fn(dc).add(digit)
 
     def y_wing(self):
-        for (x, y), c in self.iteritems():
+        for (x, y), c in self.items():
             if len(c.digits) == 2:
                 c0, c1 = c.digits[0], c.digits[1]
                 # This might be a candidate for BLUE.
@@ -1444,8 +1444,8 @@ class Board(dict):
                 board._valid()
                 return True
 
-        for digits_len in xrange(2, self.chain_length + 1):
-            for (x, y), cell in self.iteritems():
+        for digits_len in range(2, self.chain_length + 1):
+            for (x, y), cell in self.items():
                 digits = cell.digits
                 if len(digits) == digits_len:
                     for d in digits:
@@ -1571,7 +1571,7 @@ def test(fns, test, result, exit_on_error=True, verbose=True):
     def _test(fn, t, r):
         board = Board(t)
         # Run the test a few times, incase it hits multiple cases.
-        for _ in xrange(9):
+        for _ in range(9):
             fn(board)
         if board == r:
             if verbose:
@@ -1591,7 +1591,7 @@ def test(fns, test, result, exit_on_error=True, verbose=True):
         fns = [fns, fns]
 
     _test(fns[0], test, result)
-    _test(fns[1], zip(*test), zip(*result))
+    _test(fns[1], list(zip(*test)), list(zip(*result)))
 
 def tests():
     a = '123456789'
@@ -1934,8 +1934,8 @@ def link_to_string(link):
         black_offset = 81 + 81
     else:
         black_offset = 81
-    for y in xrange(9):
-        for x in xrange(9):
+    for y in range(9):
+        for x in range(9):
             offset = y * 9 + x
             d = link[offset]
             if link[black_offset + offset] == '1':
@@ -2116,11 +2116,11 @@ if __name__ == "__main__":
                     success += 1
                 else:
                     failed += 1
-                for rule, count in b.counts.iteritems():
+                for rule, count in b.counts.items():
                     counts[rule] += count
-                for rule, hit in b.hits.iteritems():
+                for rule, hit in b.hits.items():
                     hits[rule] += hit
-                for rule, duration in b.durations.iteritems():
+                for rule, duration in b.durations.items():
                     durations[rule] += duration
             except Board.InvalidSolution as e:
                 _log_exception(name, e, b)
@@ -2137,7 +2137,7 @@ if __name__ == "__main__":
         duration_total = sum(durations.values())
         rules = [r.__name__ for r in Board.steps]
         _comment('Technique                      [Ord] [Time % Seconds] [Hit %  Hit #] [Digit %  Digit #]')
-        for rule, hit in sorted(hits.iteritems(), reverse=True, key=lambda k_v: k_v[1]):
+        for rule, hit in sorted(hits.items(), reverse=True, key=lambda k_v: k_v[1]):
             _hit(' {:<30} [#{:2}] [{:>5.1%} {:>7.2f}s] [{:>5.1%} {:>6}] [{:>5.1%} {:>10}]'.format(
                 rule, rules.index(rule),
                 durations[rule] / duration_total, durations[rule],
@@ -2151,11 +2151,11 @@ if __name__ == "__main__":
     if args.times:
         duration_total = sum(durations.values())
         rule_times = DefaultDict(float)
-        for rule, duration in durations.iteritems():
+        for rule, duration in durations.items():
             rule = re_sub('(_by_row|_by_col)$', '', rule)
             rule_times[rule] += duration
         _comment('Rule Times                     [Time % Seconds]')
-        for rule, duration in sorted(rule_times.iteritems(), reverse=True, key=lambda k_v: k_v[1]):
+        for rule, duration in sorted(rule_times.items(), reverse=True, key=lambda k_v: k_v[1]):
             if duration > 0:
                 _hit(' {:<30} [{:>5.1%} {:>7.3f}s]'.format(rule, duration / duration_total, duration))
             else:
